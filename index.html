@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Task Manager</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="loading">
+    <p>Loading</p>
+    <div class="load"></div>
+  </div>
+  <!-- Modified Task Management Dashboard -->
+  <div class="app">
+    <main class="project">
+      <div class="project-info">
+        <h1></h1>
+      </div>
+      <div class="project-tasks">
+        <div class="project-column" data-status="ready" id="ready">
+          <div class="project-column-heading">
+            <h2 class="project-column-heading-title">
+
+            </h2>
+            <!-- <button class="add-task-button">Add Task</button> -->
+          </div>
+        </div>
+        <div class="project-column" data-status="progress" id="progress">
+          <div class="project-column-heading">
+            <h2 class="project-column-heading-title">
+            </h2>
+            <!-- <button class="add-task-button">Add Task</button> -->
+          </div>
+        </div>
+        <div class="project-column" data-status="review" id="review">
+          <div class="project-column-heading">
+            <h2 class="project-column-heading-title"></h2>
+            <!-- <button class="add-task-button">Add Task</button> -->
+          </div>
+        </div>
+        <div class="project-column" data-status="done" id="done">
+          <div class="project-column-heading">
+            <h2 class="project-column-heading-title"></h2>
+            <!-- <button class="add-task-button">Add Task</button> -->
+          </div>
+
+        </div>
+      </div>
+    </main>
+    <aside class="task-details">
+      <div class="task-progress">
+        <h2></h2>
+        <!-- <div class="task-progress-item">
+          <p class="sqlserver-rate">SQL Server <span></span></p>
+          <progress class="progress progress--sqlserver">
+
+          </progress>
+        </div>
+        <div class="task-progress-item">
+          <p class="frontend-rate">Frontend</p>
+          <progress class="progress progress--frontend" max="5" value="2">
+            2
+          </progress>
+        </div>
+        <div class="task-progress-item">
+          <p class="aspcore-rate">ASP Core</p>
+          <progress class="progress progress--aspcore" max="1" value="0">
+            0
+          </progress>
+        </div>
+        <div class="task-progress-item">
+          <p class="uiux-rate">UI/UX</p>
+          <progress class="progress progress--ui-ux" max="3" value="0">
+            0
+          </progress>
+        </div> -->
+      </div>
+    </aside>
+  </div>
+  <script src="./app.js"></script>
+</body>
+
+</html>
