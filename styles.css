@@ -21,7 +21,7 @@ body {
   font-size: 20px;
   letter-spacing: 1.2px;
   margin-bottom: 5px;
-  color: #3498db
+  color: #3498db;
 }
 
 .loading .load {
@@ -41,7 +41,7 @@ body {
   }
 
   100% {
-    transform: rotate(360deg)
+    transform: rotate(360deg);
   }
 }
 
@@ -81,6 +81,17 @@ h1 {
 }
 
 /* Column Styles */
+.project-column {
+  min-height: 500px;
+  transition: background-color 0.3s ease;
+}
+
+.project-column.drag-over {
+  background-color: rgba(186, 220, 243, 0.3);
+  border: 2px dashed #3498db;
+  border-radius: 12px;
+}
+
 .project-column-heading {
   margin-bottom: 1rem;
   display: flex;
@@ -102,7 +113,7 @@ h1 {
 
 /* Task Styles */
 .task {
-  cursor: move;
+  /* cursor: move; */
   background-color: #ffffff;
   padding: 1rem;
   border-radius: 8px;
@@ -110,13 +121,17 @@ h1 {
   box-shadow: rgba(99, 99, 99, 0.1) 0px 2px 8px 0px;
   margin-bottom: 1rem;
   border: 3px dashed transparent;
+  cursor: grab;
+  transition: opacity 0.2s ease;
 }
 
 .task:hover {
   box-shadow: rgba(99, 99, 99, 0.3) 0px 2px 8px 0px;
   border-color: rgba(162, 179, 207, 0.2);
 }
-
+.task:active {
+  cursor: grabbing;
+}
 .task .title-task {
   font-size: 15px;
   margin: 1.2rem 0;
@@ -165,7 +180,6 @@ h1 {
 
 /* Task Details Aside */
 .task-details {
-
   width: 24%;
   border-left: 1px solid #d9e0e9;
   display: inline-block;
@@ -183,11 +197,20 @@ h1 {
   font-size: 16px;
   margin-bottom: 1rem;
 }
+.task-progress-item {
+  background: #fff;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
 
 .task-progress-item p {
   display: flex;
   width: 100%;
   justify-content: space-between;
+  font-weight: 500;
+  font-size: 14px;
 }
 
 .task-progress-item p span {
@@ -262,7 +285,6 @@ h1 {
 }
 
 @media only screen and (max-width: 1000px) {
-
   .project-column:nth-child(2),
   .project-column:nth-child(3) {
     display: none;
@@ -293,5 +315,42 @@ h1 {
 
   h1 {
     font-size: 25px;
+  }
+}
+/* --- Toast Notifications--- */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  color: white;
+  font-weight: bold;
+  z-index: 1000;
+  animation: slideIn 0.3s ease-out;
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
+}
+
+.toast--success {
+  background-color: #2ecc71;
+}
+.toast--error {
+  background-color: #e74c3c;
+}
+.toast--hide {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
   }
 }

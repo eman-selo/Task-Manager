@@ -1,256 +1,321 @@
-const statusColumns = document.querySelectorAll(".project-tasks .project-column");
-const taskDetailsEl = document.querySelector('.task-progress');
+// DOM Elements Selection
+//  DOM تحديد العناصر من ال
+const statusColumns = document.querySelectorAll(
+  ".project-tasks .project-column",
+);
+const taskDetailsEl = document.querySelector(".task-progress");
 const mainTitle = document.querySelector(".project-info h1");
 const columnTitleReady = document.querySelector("#ready h2");
 const columnTitleInProgress = document.querySelector("#progress h2");
 const columnTitleReview = document.querySelector("#review h2");
 const columnTitleDone = document.querySelector("#done h2");
-//const taskProgressTitle = document.querySelector(".task-details h2");
 const loadingEl = document.querySelector(".loading");
 const taskDetails = document.querySelector(".task-details");
-// const loadingText = document.querySelector(".loading p");
-// let dotCount = 0;
-// setInterval(() => {
-//     dotCount = (dotCount + 1) % 4;
-//     loadingText.textContent = 'Loading' + ".".repeat(dotCount)
-// }, 500)
-//mainTitle.innerText = "Homepage Design";
 
-// Fetch to get tasks
 let allTasks = [];
-let promise = fetch("http://wiendekoration-004-site1.etempurl.com/api/tasks?token=T0TI2")
-    .then(res => res.json()).then(tasks => {
-        console.log(tasks);
-        allTasks = tasks;
-        loadingEl.style.display = "none";
-        taskDetails.style.display = "inline-block";
-        mainTitle.innerText = "Homepage Design";
-        columnTitleReady.innerText = "Task Ready";
-        columnTitleInProgress.innerText = "In Progress";
-        columnTitleReview.innerText = "Needs Review";
-        columnTitleDone.innerText = "Done";
-        //taskProgressTitle.innerText = "Task Progress by Department";
-        //Use reduce to grouped tasks by statusId
-        const groupedtTasksStatus = groupTasksByStatus(tasks);
-        //for loop to create task item and add it to the appropriate project column depending on statusId
-        distributeTasksToStatusColumns(groupedtTasksStatus);
-        //Use reduce to grouped tasks by departmentId and if the task is done or not
-        const groupedtTasksDept = groupTasksByDeptAndDoneTask(tasks);
-        console.log(groupedtTasksDept);
+let draggedItem = null;
 
-        // function to create task progress item and modify progress value and max
-        createProgressAndModifyItsValues(groupedtTasksDept);
+// Initial Fetch: Load data from server
+//  لجلب البيانات  fetch  استخدام
+fetch("https://6981cb9cc9a606f5d4480e30.mockapi.io/tasks")
+  .then((res) => res.json())
+  .then((tasks) => {
+    allTasks = tasks;
+    // UI Setup
+    // إعداد واجهة المستخدم
+    loadingEl.style.display = "none";
+    taskDetails.style.display = "inline-block";
+    mainTitle.innerText = "Homepage Design";
+    columnTitleReady.innerText = "Task Ready";
+    columnTitleInProgress.innerText = "In Progress";
+    columnTitleReview.innerText = "Needs Review";
+    columnTitleDone.innerText = "Done";
 
-        let tasksEl = document.querySelectorAll(".task");
-        let draggedItem = null;
-        tasksEl.forEach((taskEl) => {
-            taskEl.addEventListener("dragstart", (e) => {
-                e.dataTransfer.setData("text/plain", e.target.dataset.id);
-                draggedItem = taskEl;
-            })
-        })
+    // Distribute tasks to columns |  توزيع المهام على  الأعمدة
+    const groupedtTasksStatus = groupTasksByStatus(allTasks);
+    distributeTasksToStatusColumns(groupedtTasksStatus);
 
-        statusColumns.forEach(column => {
-            column.addEventListener("dragover", e => {
-                if (draggedItem && draggedItem.parentElement !== column)
-                    e.preventDefault();
-            })
-            column.addEventListener("drop", (e) => {
-                const taskId = e.dataTransfer.getData("text/plain");
-                const newStatus = getIdOfStatusByName(column.dataset.status);
-                const TaskElement = document.querySelector(`.task[data-id="${taskId}"]`);
-                console.log("new status : " + newStatus);
-                console.log("task el : " + TaskElement);
-                if (TaskElement) {
-                    column.appendChild(TaskElement);
-                    fetch(`http://wiendekoration-004-site1.etempurl.com/api/ModifyTask?token=T0TI2&id=${taskId}&statusId=${newStatus}`)
-                        .then(res => {
-                            if (!res.ok) throw new Error("An error occurred while updating");
-                            return res.json();
-                        }).then(data => {
-                            const updatedTaskIndex = allTasks.findIndex(task => task.id == taskId);
-                            if (updatedTaskIndex !== -1) {
-                                allTasks[updatedTaskIndex].statusId = newStatus;
-                            }
-                            console.log("The update succeeded");
-                            console.log("data : " + data);
+    // Render statistics section |    رسم قسم الإحصائيات
+    updateProgressSection();
 
-                            // if (newStatus == 4) {
-                            taskDetailsEl.innerHTML = "";
-
-
-                            createProgressAndModifyItsValues(groupTasksByDeptAndDoneTask(allTasks));
-
-                            // }
-                        }).catch(err => {
-                            console.error("Update failed", err)
-                        })
-                }
-            })
-        })
-
-    }).catch(() => {
-        console.log("Error here !");
-
-    })
-
-
-
-
-
-
-
-
-
-// function to group tasks by statusId using reduce
-function groupTasksByStatus(tasks) {
-    const grouptasksStatus = tasks.reduce((tasksStatus, currentTask) => {
-        const status = currentTask.statusId;
-        if (!tasksStatus[status]) {
-            tasksStatus[status] = [];
-        }
-        tasksStatus[status].push(currentTask);
-        return tasksStatus
-    }, {});
-    return grouptasksStatus;
-}
-//function to create task item and add it to the appropriate project column depending on statusId
+    // Initialize Drag & Drop zones|   تفعيل مناطق الإفلات
+    setupDropZones();
+  })
+  .catch((err) => {
+    console.error("Data loading error:", err);
+    loadingEl.innerHTML = "<p>Could not load data. Please try again later.</p>";
+  });
+// Distributes tasks to their respective status columns
+// دالة لتوزيع المهام وتفعيل السحب عليها
 function distributeTasksToStatusColumns(groupedtTasksStatus) {
+  //Clear columns first to avoid duplication | مسح الأعمدة أولاً لتجنب تكرار العناصر
+  statusColumns.forEach((col) => {
+    const heading = col.querySelector(".project-column-heading");
+    col.innerHTML = "";
+    if (heading) col.appendChild(heading);
+  });
 
-    for (const status in groupedtTasksStatus) {
-        const groupedStatusFragment = new DocumentFragment();
-        groupedtTasksStatus[status].forEach(task => {
-            const taskEl = document.createElement('div');
-            taskEl.setAttribute('draggable', "true");
-            taskEl.dataset.id = task.id;
-            const departmentElement = document.createElement('span');
-            const titleElement = document.createElement('p');
-            taskEl.classList.add('task');
-            titleElement.classList.add("title-task");
-            departmentElement.classList.add("task-tag");
-            departmentElement.innerText = getDepartmentNameAndAddClasses(task.departmentId, departmentElement, null, null);
-            titleElement.innerText = task.title;
-            taskEl.appendChild(departmentElement);
-            taskEl.appendChild(titleElement);
+  for (const status in groupedtTasksStatus) {
+    const groupedStatusFragment = new DocumentFragment();
+    groupedtTasksStatus[status].forEach((task) => {
+      const taskEl = createTaskCard(task);
+      groupedStatusFragment.appendChild(taskEl);
+    });
 
-            groupedStatusFragment.appendChild(taskEl);
-        });
-        statusColumns[status - 1].appendChild(groupedStatusFragment);
-    }
-
+    const column = statusColumns[status - 1];
+    if (column) column.appendChild(groupedStatusFragment);
+  }
 }
 
-//Use reduce to grouped tasks by departmentId and if the task is done or not
-function groupTasksByDeptAndDoneTask(tasks) {
-    const groupTasksByDept = tasks.reduce((tasksDept, currentTask) => {
-        const dept = currentTask.departmentId;
-        if (!tasksDept[dept]) {
-            tasksDept[dept] = { done: [], notDone: [] };
+//Creates a task card element with drag events | دالة إنشاء بطاقة المهمة مع أحداث السحب
+function createTaskCard(task) {
+  const taskEl = document.createElement("div");
+  taskEl.classList.add("task");
+  taskEl.setAttribute("draggable", "true");
+  taskEl.dataset.id = task.id;
+
+  const departmentElement = document.createElement("span");
+  departmentElement.classList.add("task-tag");
+  departmentElement.innerText = getDepartmentNameAndAddClasses(
+    task.departmentId,
+    departmentElement,
+    null,
+    null,
+  );
+
+  const titleElement = document.createElement("p");
+  titleElement.classList.add("title-task");
+  titleElement.innerText = task.title;
+
+  taskEl.appendChild(departmentElement);
+  taskEl.appendChild(titleElement);
+
+  // Drag Events for Task | أحداث السحب للمهمة
+  taskEl.addEventListener("dragstart", (e) => {
+    draggedItem = taskEl;
+    e.dataTransfer.setData("text/plain", task.id);
+    e.dataTransfer.effectAllowed = "move";
+    setTimeout(() => {
+      taskEl.style.opacity = "0.5";
+    }, 0);
+  });
+
+  taskEl.addEventListener("dragend", (e) => {
+    taskEl.style.opacity = "1";
+    draggedItem = null;
+  });
+
+  return taskEl;
+}
+// function to  initialize Drag & Drop zones
+function setupDropZones() {
+  statusColumns.forEach((column) => {
+    column.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      column.classList.add("drag-over");
+      const afterElement = getDragAfterElement(column, e.clientY);
+      const taskElement = document.querySelector(
+        ".task[style*='opacity: 0.5']",
+      );
+
+      if (taskElement) {
+        if (afterElement == null) {
+          column.appendChild(taskElement);
+        } else {
+          column.insertBefore(taskElement, afterElement);
         }
-        if (currentTask.statusId == 4)
-            tasksDept[dept].done.push(currentTask);
-        else
-            tasksDept[dept].notDone.push(currentTask);
-        return tasksDept
-    }, {});
-    return groupTasksByDept;
+      }
+    });
+
+    column.addEventListener("dragleave", () => {
+      column.classList.remove("drag-over");
+    });
+
+    column.addEventListener("drop", (e) => {
+      e.preventDefault();
+      column.classList.remove("drag-over");
+
+      const taskId = e.dataTransfer.getData("text/plain");
+
+      const taskElement = draggedItem;
+
+      const newStatus = getIdOfStatusByName(column.dataset.status);
+
+      if (taskId && taskElement) {
+        const taskIndex = allTasks.findIndex((t) => t.id == taskId);
+
+        if (taskIndex !== -1) {
+          const oldStatus = allTasks[taskIndex].statusId;
+          const originalColumn = taskElement.parentElement;
+
+          allTasks[taskIndex].statusId = newStatus;
+
+          updateProgressSection();
+
+          updateTaskOnServer(
+            taskId,
+            newStatus,
+            oldStatus,
+            taskElement,
+            originalColumn,
+          );
+        }
+      }
+    });
+  });
 }
-// function to create task progress item and modify progress value and max
+// Helper function to find the element after the current drag position
+// دالة مساعدة لتحديد العنصر الذي يجب الإفلات قبله بناءً على إحداثيات الماوس
+function getDragAfterElement(container, y) {
+  const draggableElements = [
+    ...container.querySelectorAll(".task:not([style*='opacity: 0.5'])"),
+  ];
+
+  return draggableElements.reduce(
+    (closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+
+      if (offset < 0 && offset > closest.offset) {
+        return { offset: offset, element: child };
+      } else {
+        return closest;
+      }
+    },
+    { offset: Number.NEGATIVE_INFINITY },
+  ).element;
+}
+function updateTaskOnServer(
+  taskId,
+  newStatus,
+  oldStatus,
+  taskElement,
+  originalColumn,
+) {
+  fetch(`https://6981cb9cc9a606f5d4480e30.mockapi.io/tasks/${taskId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ statusId: newStatus }),
+  })
+    .then((res) => {
+      if (!res.ok) throw new Error("Server update failed");
+      showToast("Task updated successfully!", "success");
+    })
+    .catch((err) => {
+      console.error(err);
+      originalColumn.appendChild(taskElement);
+
+      const taskIndex = allTasks.findIndex((t) => t.id == taskId);
+      if (taskIndex !== -1) allTasks[taskIndex].statusId = oldStatus;
+
+      updateProgressSection();
+      showToast("Failed to sync with server. Reverting change...", "error");
+    });
+}
+function updateProgressSection() {
+  taskDetailsEl.innerHTML = "";
+  const groupedtTasksDept = groupTasksByDeptAndDoneTask(allTasks);
+  createProgressAndModifyItsValues(groupedtTasksDept);
+}
+
+// الدوال المساعدة ---
+// Groups tasks based on their status ID
+// دالة لتجميع المهام في مجموعات بناءً على رقم الحالة الخاص بها
+function groupTasksByStatus(tasks) {
+  return tasks.reduce((acc, task) => {
+    const status = task.statusId;
+    if (!acc[status]) acc[status] = [];
+    acc[status].push(task);
+    return acc;
+  }, {});
+}
+
+//   Groups tasks by department and filters completed tasks for statistics
+// دالة لتجميع المهام حسب القسم وتصنيفها إلى (مكتملة/غير مكتملة) لاستخدامها في الإحصائيات
+
+function groupTasksByDeptAndDoneTask(tasks) {
+  return tasks.reduce((acc, task) => {
+    const dept = task.departmentId;
+    if (!acc[dept]) acc[dept] = { done: [], notDone: [] };
+    if (Number(task.statusId) === 4) acc[dept].done.push(task);
+    else acc[dept].notDone.push(task);
+    return acc;
+  }, {});
+}
+
+// Creates progress bars and updates their values based on department data
+// دالة لإنشاء أشرطة التقدم وتحديث قيمها بناءً على بيانات كل قسم
+
 function createProgressAndModifyItsValues(groupedtTasksDept) {
-    const groupedDeptFragment = new DocumentFragment();
-    const taskProgressTitle = document.createElement('h2');
-    taskProgressTitle.innerText = "Task Progress by Department";
-    groupedDeptFragment.appendChild(taskProgressTitle);
-    for (const dept in groupedtTasksDept) {
+  const groupedDeptFragment = new DocumentFragment();
+  const title = document.createElement("h2");
+  title.innerText = "Task Progress by Department";
+  groupedDeptFragment.appendChild(title);
 
-        const taskProgressItem = document.createElement('div');
-        const taskProgressName = document.createElement('p');
-        const taskRate = document.createElement("span");
-        const taskProgress = document.createElement("progress");
-        taskProgressName.innerText = getDepartmentNameAndAddClasses(Number(dept), null, taskProgress, taskProgressItem);
-        taskRate.innerText = `${groupedtTasksDept[dept].done.length} / ${groupedtTasksDept[dept].done.length + groupedtTasksDept[dept].notDone.length}`;
-        taskProgressName.appendChild(taskRate);
-        taskProgress.max = groupedtTasksDept[dept].done.length + groupedtTasksDept[dept].notDone.length;
-        taskProgress.value = groupedtTasksDept[dept].done.length;
-        taskProgressItem.classList.add("task-progress-item");
-        taskProgress.classList.add("progress");
-        taskProgressItem.appendChild(taskProgressName);
-        taskProgressItem.appendChild(taskProgress);
+  for (const dept in groupedtTasksDept) {
+    const item = document.createElement("div");
+    item.classList.add("task-progress-item");
 
-        groupedDeptFragment.appendChild(taskProgressItem);
-    }
-    //taskDetailsEl.appendChild(columnTitleInProgress);
-    taskDetailsEl.appendChild(groupedDeptFragment);
+    const p = document.createElement("p");
+    const span = document.createElement("span");
+    const progress = document.createElement("progress");
+    progress.classList.add("progress");
 
+    p.innerText = getDepartmentNameAndAddClasses(
+      Number(dept),
+      null,
+      progress,
+      item,
+    );
+    span.innerText = ` ${groupedtTasksDept[dept].done.length} / ${groupedtTasksDept[dept].done.length + groupedtTasksDept[dept].notDone.length}`;
+
+    progress.max =
+      groupedtTasksDept[dept].done.length +
+      groupedtTasksDept[dept].notDone.length;
+    progress.value = groupedtTasksDept[dept].done.length;
+
+    p.appendChild(span);
+    item.appendChild(p);
+    item.appendChild(progress);
+    groupedDeptFragment.appendChild(item);
+  }
+  taskDetailsEl.appendChild(groupedDeptFragment);
 }
-//function to get department name using department id , counted tasks
-function getDepartmentNameAndAddClasses(departmentId, departmentElement, progressElement, taskProgressItem) {
-    switch (departmentId) {
-        case 1:
-            if (departmentElement)
-                departmentElement.classList.add("task-tag--ui-ux");
-            if (progressElement)
-                progressElement.classList.add("progress--ui-ux");
-            if (taskProgressItem)
-                taskProgressItem.classList.add("ui-ux")
-            return "UI/UX";
-        case 2:
-            if (departmentElement)
-                departmentElement.classList.add("task-tag--frontend");
-            if (progressElement)
-                progressElement.classList.add("progress--frontend");
-            if (taskProgressItem)
-                taskProgressItem.classList.add("frontend")
-            return "Frontend";
-        case 3:
-            if (departmentElement)
-                departmentElement.classList.add("task-tag--aspcore");
-            if (progressElement)
-                progressElement.classList.add("progress--aspcore");
-            if (taskProgressItem)
-                taskProgressItem.classList.add("aspcore")
-            return "ASP Core";
 
-        case 4:
-            if (departmentElement)
-                departmentElement.classList.add("task-tag--sqlserver");
-            if (progressElement)
-                progressElement.classList.add("progress--sqlserver");
-            if (taskProgressItem)
-                taskProgressItem.classList.add("sqlserver");
-            return "SQL Server";
-        default:
-            return "welcome";
-    }
-}
-function getIdOfStatusByName(statusName) {
-    switch (statusName) {
-        case "ready":
-            return 1;
-        case "progress":
-            return 2;
-        case "review":
-            return 3;
-        case "done":
-            return 4;
+// Maps department IDs to names and applies specific CSS classes for styling
+// دالة لربط أرقام الأقسام بأسمائها وتطبيق فئات تنسيق CSS خاصة بكل قسم
 
-    }
+function getDepartmentNameAndAddClasses(id, el, prog, item) {
+  const names = { 1: "UI/UX", 2: "Frontend", 3: "ASP Core", 4: "SQL Server" };
+  const tags = { 1: "ui-ux", 2: "frontend", 3: "aspcore", 4: "sqlserver" };
+
+  const className = tags[id];
+  if (el) el.classList.add(`task-tag--${className}`);
+  if (prog) prog.classList.add(`progress--${className}`);
+  if (item) item.classList.add(className);
+
+  return names[id] || "Other";
 }
-// function assignCLassToProgressByDept(departmentId, progressElement) {
-//     switch (departmentId) {
-//         case 1:
-//             progressElement.classList.add("progress--ui-ux");
-//             return "UI/UX";
-//         case 2:
-//             progressElement.classList.add("progress--frontend");
-//             return "Frontend";
-//         case 3:
-//             progressElement.classList.add("progress--aspcore");
-//             return "ASP Core";
-//         case 4:
-//             progressElement.classList.add("progress--sqlserver");
-//             return "SQL Server";
-//         default:
-//             return "welcome";
-//     }
-// }
+
+// Maps status names to their corresponding ID numbers
+// دالة لتحويل أسماء الحالات (نص) إلى الأرقام المقابلة لها في قاعدة البيانات
+
+function getIdOfStatusByName(name) {
+  const map = { ready: 1, progress: 2, review: 3, done: 4 };
+  return map[name];
+}
+
+//   Displays a toast notification | دالة إظهار تنبيه للمستخدم
+
+function showToast(message, type = "success") {
+  const toast = document.createElement("div");
+  toast.classList.add("toast", `toast--${type}`);
+  toast.innerText = message;
+
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add("toast--hide");
+    toast.addEventListener("transitionend", () => toast.remove());
+  }, 3000);
+}
